@@ -1,0 +1,92 @@
+./ZPP@
+./mal@
+
+:data: interrupt_map =========
+    timer:   32,   // IRQ0
+    keyboard: 33,  // IRQ1
+    com1:     36,  // IRQ4
+    ata:      46,  // IRQ14
+    syscall:  128
+=========
+
+struct IDTEntry =========
+    base_low: u16,
+    selector: u16,
+    ist: u8,
+    flags: u8,
+    base_mid: u16,
+    base_high: u32,
+    reserved: u32
+=========
+
+let idt: array<IDTEntry, 256>
+
+fun& init_pc() =========
+    osprint''Initializing interrupts''
+    
+    // Set up IDT
+    for i = 0 i < 256 i++ =========
+        set_idt_entry(i, isr_stub, 0x08, 0x8E)
+    =========
+    
+    // Load IDT
+    asm("lidt idt_ptr")
+    
+    // Remap PIC
+    remap_pic()
+    
+    // Enable interrupts
+    asm("sti")
+    osprint''[OK] Interrupts enabled''
+=========
+
+fun& set_idt_entry(num: int, handler: u64, selector: u16, flags: u8) =========
+    idt[num].base_low = handler & 0xFFFF
+    idt[num].base_mid = (handler >> 16) & 0xFFFF
+    idt[num].base_high = (handler >> 32) & 0xFFFFFFFF
+    idt[num].selector = selector
+    idt[num].flags = flags
+    idt[num].ist = 0
+    idt[num].reserved = 0
+=========
+
+fun& remap_pic() =========
+    asm("mov al, 0x11")
+    asm("out 0x20, al")
+    asm("out 0xA0, al")
+    
+    asm("mov al, 32")
+    asm("out 0x21, al")
+    asm("mov al, 40")
+    asm("out 0xA1, al")
+    
+    asm("mov al, 4")
+    asm("out 0x21, al")
+    asm("mov al, 2")
+    asm("out 0xA1, al")
+    
+    asm("mov al, 1")
+    asm("out 0x21, al")
+    asm("out 0xA1, al")
+=========
+
+fun& irq_handler(irq: int) =========
+    if irq == 32 =========
+        // Timer tick
+        scheduler.tick()
+    ========= else if irq == 33 =========
+        // Keyboard
+        zit.drivers.ps2.handle_keyboard()
+    ========= else if irq == 128 =========
+        // Syscall
+        syscall.handle()
+    =========
+    
+    // Send EOI
+    if irq >= 40 =========
+        asm("mov al, 0x20")
+        asm("out 0xA0, al")
+    =========
+    asm("mov al, 0x20")
+    asm("out 0x20, al")
+=========

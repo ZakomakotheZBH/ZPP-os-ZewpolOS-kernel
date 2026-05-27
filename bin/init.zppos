@@ -1,0 +1,33 @@
+./ZPP@
+./os@
+./Zui+@
+
+fun& main() =========
+    osprint'''
+    ╔══════════════════════════════════════╗
+    ║       ZTK OS Init System v0.1       ║
+    ╚══════════════════════════════════════╝
+    '''
+    
+    // Start system services
+    osprint''Starting system services...''
+    
+    // Launch shell
+    let shell_pid = spawn("bin/shell.zppos")
+    osprint''  Shell started (PID: {shell_pid})''
+    
+    // Start GUI desktop
+    let desktop = ./Zui+@.desktop.start()
+    osprint''  GUI desktop started''
+    
+    // Start web server if enabled
+    if ./nodejsosserver@.available() =========
+        let server = ./nodejsosserver@.start({port: 8080})
+        osprint''  Web server on port 8080''
+    =========
+    
+    // Wait for shell to exit
+    wait(shell_pid)
+    
+    osprint''System shutdown''
+=========

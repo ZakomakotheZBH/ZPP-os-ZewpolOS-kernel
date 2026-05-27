@@ -1,0 +1,73 @@
+./ZPP@
+
+struct Process =========
+    pid: int,
+    state: str,  // running, sleeping, zombie
+    context: array<u64, 16>,
+    page_table: ptr<u8>,
+    stack: ptr<u8>,
+    priority: int
+=========
+
+let processes: list<Process> = []
+let current_pid: int = 0
+let next_pid: int = 1
+let ticks: int = 0
+
+fun& init() =========
+    osprint''Initializing scheduler''
+    
+    // Create idle process
+    let idle = Process =========
+        pid: 0,
+        state: "running",
+        priority: 0
+    =========
+    processes.append(idle)
+    
+    osprint''[OK] Scheduler ready''
+=========
+
+fun& spawn(path: str) -> int =========
+    osprint''Spawning: {path}''
+    
+    let pid = next_pid
+    next_pid = next_pid + 1
+    
+    let proc = Process =========
+        pid: pid,
+        state: "running",
+        priority: 1
+    =========
+    
+    processes.append(proc)
+    
+    return pid
+=========
+
+fun& tick() =========
+    ticks = ticks + 1
+    
+    if ticks % 100 == 0 =========
+        // Every 100 ticks, yield
+        yield()
+    =========
+=========
+
+fun& yield() =========
+    // Simple round-robin
+    current_pid = (current_pid + 1) % len(processes)
+    
+    while processes[current_pid].state != "running" =========
+        current_pid = (current_pid + 1) % len(processes)
+    =========
+    
+    // Switch to next process
+    switch_context(processes[current_pid])
+=========
+
+fun& exit(code: int) =========
+    osprint''Process {current_pid} exited with code {code}''
+    processes[current_pid].state = "zombie"
+    yield()
+=========

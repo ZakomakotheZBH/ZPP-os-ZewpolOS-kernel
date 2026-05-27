@@ -1,0 +1,98 @@
+./ZPP@
+
+:data: filesystem =========
+    root: "/",
+    max_files: 256,
+    max_path: 4096
+=========
+
+struct File =========
+    fd: int,
+    path: str,
+    size: int,
+    data: ptr<u8>,
+    flags: int
+=========
+
+let file_table: array<File, 256>
+let next_fd: int = 3  // 0=stdin, 1=stdout, 2=stderr
+
+fun& init(root_path: str) =========
+    osprint''Mounting filesystem at {root_path}''
+    
+    // Create virtual filesystem
+    create_dir("/")
+    create_dir("/bin")
+    create_dir("/etc")
+    create_dir("/home")
+    create_dir("/tmp")
+    create_dir("/var")
+    create_dir("/var/log")
+    create_dir("/var/run")
+    
+    osprint''[OK] Virtual filesystem ready''
+=========
+
+fun& read(fd: int, buf: ptr<u8>, count: int) -> int =========
+    if fd == 0 =========  // stdin
+        return read_stdin(buf, count)
+    ========= else if fd == 1 =========  // stdout
+        // Can't read from stdout
+        return -1
+    ========= else =========
+        let file = file_table[fd]
+        if file == null =========
+            return -1
+        =========
+        
+        let bytes_read = min(count, file.size)
+        copy_memory(buf, file.data, bytes_read)
+        return bytes_read
+    =========
+=========
+
+fun& write(fd: int, buf: ptr<u8>, count: int) -> int =========
+    if fd == 1 or fd == 2 =========  // stdout/stderr
+        for i = 0 i < count i++ =========
+            ./os@.putchar(buf[i])
+        =========
+        return count
+    ========= else =========
+        let file = file_table[fd]
+        if file == null =========
+            return -1
+        =========
+        
+        // Append to file
+        let new_data = realloc(file.data, file.size + count)
+        copy_memory(new_data + file.size, buf, count)
+        file.data = new_data
+        file.size = file.size + count
+        return count
+    =========
+=========
+
+fun& open(path: str, flags: int) -> int =========
+    let fd = next_fd
+    next_fd = next_fd + 1
+    
+    let file = File =========
+        fd: fd,
+        path: path,
+        size: 0,
+        data: null,
+        flags: flags
+    =========
+    
+    file_table[fd] = file
+    return fd
+=========
+
+fun& close(fd: int) =========
+    if file_table[fd] != null =========
+        if file_table[fd].data != null =========
+            free(file_table[fd].data)
+        =========
+        file_table[fd] = null
+    =========
+=========

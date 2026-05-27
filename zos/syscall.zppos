@@ -1,0 +1,53 @@
+./ZPP@
+./os@
+
+:data: syscall_table =========
+    read:    0,
+    write:   1,
+    open:    2,
+    close:   3,
+    spawn:   4,
+    exit:    5,
+    sleep:   6,
+    alloc:   7,
+    free:    8
+=========
+
+fun& handle() =========
+    // Syscall number in rax
+    let num: int
+    asm("mov [num], rax")
+    
+    if num == 0 =========  // read
+        let fd: int
+        let buf: ptr<u8>
+        let count: int
+        asm("mov [fd], rdi")
+        asm("mov [buf], rsi")
+        asm("mov [count], rdx")
+        let ret = fs.read(fd, buf, count)
+        asm("mov rax, [ret]")
+    ========= else if num == 1 =========  // write
+        let fd: int
+        let buf: ptr<u8>
+        let count: int
+        asm("mov [fd], rdi")
+        asm("mov [buf], rsi")
+        asm("mov [count], rdx")
+        let ret = fs.write(fd, buf, count)
+        asm("mov rax, [ret]")
+    ========= else if num == 4 =========  // spawn
+        let path: ptr<u8>
+        asm("mov [path], rdi")
+        let pid = scheduler.spawn(path)
+        asm("mov rax, [pid]")
+    ========= else if num == 5 =========  // exit
+        let code: int
+        asm("mov [code], rdi")
+        scheduler.exit(code)
+    ========= else =========
+        asm("mov rax, -1")  // Unknown syscall
+    =========
+    
+    asm("iretq")
+=========

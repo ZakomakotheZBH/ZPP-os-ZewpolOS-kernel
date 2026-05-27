@@ -1,0 +1,91 @@
+./ZPP@
+./os@
+./mal@
+./Zui+@
+./data@
+./nodejsosserver@
+
+import "zos/memory.zppos"
+import "zos/interrupts.zppos"
+import "zos/syscall.zppos"
+import "zos/scheduler.zppos"
+import "zos/fs.zppos"
+import "zit/gui.zppos"
+import "zit/terminal.zppos"
+import "zit/drivers.zppos"
+
+:data: kernel_info =========
+    name: "ZTK",
+    version: "0.1.0",
+    target: "x86_64-pc",
+    build: $(date -u +"%Y-%m-%d %H:%M:%S")$
+=========
+
+func (asm) _start =========
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov rsp, 0x9C000
+    mov rbp, rsp
+    call kmain
+    hlt
+=========
+
+fun& kmain() =========
+    osprint''========================================''
+    osprint''ZTK OS v0.1.0 for PC Desktop''
+    osprint''Built: {kernel_info.build}''
+    osprint''========================================''
+    
+    // Hardware
+    ./mal@.init_pc()
+    osprint''[OK] Hardware initialized''
+    
+    // Memory
+    memory.init_pc(4096)
+    osprint''[OK] Memory manager (4GB)''
+    
+    // Interrupts
+    interrupts.init_pc()
+    osprint''[OK] Interrupt handlers''
+    
+    // Scheduler
+    scheduler.init()
+    osprint''[OK] Process scheduler''
+    
+    // Filesystem
+    fs.init("/")
+    osprint''[OK] Virtual filesystem''
+    
+    // Drivers
+    zit.drivers.ata.init()
+    zit.drivers.e1000.init()
+    zit.drivers.ps2.init()
+    osprint''[OK] Device drivers''
+    
+    // GUI
+    zit.gui.init_pc(1024, 768)
+    osprint''[OK] Zui+ GUI ready''
+    
+    // Server
+    if ./nodejsosserver@.available() =========
+        ./nodejsosserver@.start({port: 8080, cores: 2})
+        osprint''[OK] Web server on port 8080''
+    =========
+    
+    // Data extension
+    ./data@.init_pc()
+    osprint''[OK] /data@ extension''
+    
+    // Launch
+    scheduler.spawn("bin/init.zppos")
+    osprint''========================================''
+    osprint''ZTK OS is running''
+    osprint''========================================''
+    
+    while true =========
+        scheduler.yield()
+        ./mal@.hlt()
+    =========
+=========

@@ -1,0 +1,110 @@
+./ZPP@
+./mal@
+
+:data: memory_map =========
+    bios:     0x00000000 - 0x00050000,
+    kernel:   0x00100000 - 0x00200000,
+    heap:     0x00200000 - 0x10000000,
+    stack:    0x0009C000 - 0x000A0000,
+    mmio:     0xF0000000 - 0xFFFFFFFF
+=========
+
+struct PageFrame =========
+    addr: u64,
+    used: bool,
+    refcount: int
+=========
+
+let page_allocator: ptr<PageFrame> = null
+let total_pages: int = 0
+
+fun& init_pc(total_mb: int) =========
+    osprint''Memory init: {total_mb} MB''
+    
+    total_pages = (total_mb * 1024 * 1024) / 4096
+    osprint''  Total pages: {total_pages}''
+    
+    // Get memory map from BIOS
+    let regions = ./mal@.bios.e820()
+    let usable_regions = 0
+    
+    for region in regions =========
+        if region.type == 1 =========  // Usable RAM
+            osprint''  Region: {region.start:#x} - {region.end:#x} ({region.size >> 20} MB)''
+            mark_usable(region.start, region.end)
+            usable_regions = usable_regions + 1
+        =========
+    =========
+    
+    osprint''  Usable regions: {usable_regions}''
+    
+    // Initialize page allocator
+    page_allocator = init_page_allocator()
+    
+    // Enable paging
+    setup_pml4()
+    enable_paging()
+    osprint''[OK] Paging enabled''
+=========
+
+fun& alloc_page() -> ptr<PageFrame> =========
+    for i = 0 i < total_pages i++ =========
+        if !page_allocator[i].used =========
+            page_allocator[i].used = true
+            page_allocator[i].refcount = 1
+            return &page_allocator[i]
+        =========
+    =========
+    return null
+=========
+
+fun& free_page(page: ptr<PageFrame>) =========
+    if page == null =========
+        return
+    =========
+    
+    page.refcount = page.refcount - 1
+    
+    if page.refcount <= 0 =========
+        page.used = false
+        page.refcount = 0
+    =========
+=========
+
+fun& setup_pml4() =========
+    // 4-level paging for x86_64
+    let pml4 = alloc_page()
+    let pdpt = alloc_page()
+    let pd = alloc_page()
+    
+    // Set up mappings
+    // Identity map first 4GB
+    for i = 0 i < 512 i++ =========
+        // Map 2MB pages for performance
+        let pt = alloc_page()
+        pml4[i] = (pdpt.addr) | 0x03
+        pdpt[i] = (pd.addr) | 0x03
+        pd[i] = (pt.addr) | 0x83  // Present, Writable, Huge page
+    =========
+    
+    // Load page table into CR3
+    asm("mov cr3, pml4")
+=========
+
+fun& enable_paging() =========
+    // Enable PAE
+    asm("mov eax, cr4")
+    asm("or eax, 1 << 5")
+    asm("mov cr4, eax")
+    
+    // Set long mode bit in EFER
+    asm("mov ecx, 0xC0000080")
+    asm("rdmsr")
+    asm("or eax, 1 << 8")
+    asm("wrmsr")
+    
+    // Enable paging
+    asm("mov eax, cr0")
+    asm("or eax, 1 << 31")
+    asm("mov cr0, eax")
+=========

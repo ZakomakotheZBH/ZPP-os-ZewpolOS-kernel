@@ -1,0 +1,39 @@
+./ZPP@
+./os@
+./nodejsosserver@
+./data@
+
+fun& main() =========
+    osprint''ZTK Web Server v1.0''
+    
+    let server = ./nodejsosserver@.start({
+        port: 8080,
+        cpu_cores: 2,
+        root: "/var/www"
+    })
+    
+    // Add routes
+    server.get("/", fun& (req, res) =========
+        res.html('''
+            <!DOCTYPE html>
+            <html>
+            <head><title>ZTK OS</title></head>
+            <body>
+                <h1>Welcome to ZTK OS</h1>
+                <p>Powered by ZPPOS and /nodejsosserver@</p>
+            </body>
+            </html>
+        ''')
+    =========)
+    
+    server.get("/api/data", fun& (req, res) =========
+        let data = ./data@.snapshot()
+        res.json(data)
+    =========)
+    
+    osprint''Server running at http://localhost:8080''
+    
+    while true =========
+        ./nodejsosserver@.idle()
+    =========
+=========

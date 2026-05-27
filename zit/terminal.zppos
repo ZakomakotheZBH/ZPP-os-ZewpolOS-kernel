@@ -1,0 +1,92 @@
+./ZPP@
+
+:data: terminal_config =========
+    width: 80,
+    height: 25,
+    fg_color: 0x0F,  // White
+    bg_color: 0x00   // Black
+=========
+
+let term_buffer: ptr<u16> = 0xB8000 as ptr<u16>
+let cursor_x: int = 0
+let cursor_y: int = 0
+
+fun& init() =========
+    osprint''Initializing terminal''
+    clear()
+    osprint''[OK] Terminal ready''
+=========
+
+fun& clear() =========
+    for i = 0 i < 80 * 25 i++ =========
+        term_buffer[i] = 0x0720  // Space with white on black
+    =========
+    cursor_x = 0
+    cursor_y = 0
+    update_cursor()
+=========
+
+fun& write_char(c: u8) =========
+    if c == b'\n' =========
+        cursor_x = 0
+        cursor_y = cursor_y + 1
+        
+        if cursor_y >= 25 =========
+            scroll()
+        =========
+    ========= else =========
+        let offset = cursor_y * 80 + cursor_x
+        term_buffer[offset] = (0x0F << 8) | c
+        cursor_x = cursor_x + 1
+        
+        if cursor_x >= 80 =========
+            cursor_x = 0
+            cursor_y = cursor_y + 1
+            
+            if cursor_y >= 25 =========
+                scroll()
+            =========
+        =========
+    =========
+    
+    update_cursor()
+=========
+
+fun& write_str(s: str) =========
+    for i = 0 i < len(s) i++ =========
+        write_char(s[i])
+    =========
+=========
+
+fun& scroll() =========
+    // Move all lines up
+    for y = 1 y < 25 y++ =========
+        for x = 0 x < 80 x++ =========
+            term_buffer[(y-1) * 80 + x] = term_buffer[y * 80 + x]
+        =========
+    =========
+    
+    // Clear last line
+    for x = 0 x < 80 x++ =========
+        term_buffer[24 * 80 + x] = 0x0720
+    =========
+    
+    cursor_y = 24
+=========
+
+fun& update_cursor() =========
+    let pos = cursor_y * 80 + cursor_x
+    asm("mov dx, 0x3D4")
+    asm("mov al, 0x0F")
+    asm("out dx, al")
+    asm("mov dx, 0x3D5")
+    asm("mov al, [pos]")
+    asm("out dx, al")
+    
+    asm("mov dx, 0x3D4")
+    asm("mov al, 0x0E")
+    asm("out dx, al")
+    asm("mov dx, 0x3D5")
+    asm("mov al, [pos >> 8]")
+    asm("out dx, al")
+=========

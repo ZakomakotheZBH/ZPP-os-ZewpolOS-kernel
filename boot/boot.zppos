@@ -1,0 +1,72 @@
+./ZPP@
+
+func (bin) boot =========
+    org: 0x7C00
+    
+    jmp start
+    nop
+    
+    // BIOS Parameter Block
+    oem: "ZTK   "
+    bytes_per_sector: 512
+    sectors_per_cluster: 1
+    reserved_sectors: 1
+    fat_count: 2
+    root_entries: 224
+    total_sectors: 2880
+    media_type: 0xF0
+    sectors_per_fat: 9
+    sectors_per_track: 18
+    heads: 2
+    hidden_sectors: 0
+    total_sectors_large: 0
+    
+    start:
+        xor ax, ax
+        mov ds, ax
+        mov es, ax
+        mov ss, ax
+        mov sp, 0x7C00
+        
+        mov si, msg_loading
+        call print
+        
+        // Load kernel from disk
+        mov ah, 0x02
+        mov al, 32        // Load 32 sectors
+        mov ch, 0
+        mov cl, 2
+        mov dh, 0
+        mov bx, 0x1000
+        int 0x13
+        
+        jc disk_error
+        
+        mov si, msg_ok
+        call print
+        
+        // Jump to kernel
+        jmp 0x1000:0x0000
+    
+    print:
+        lodsb
+        or al, al
+        jz done
+        mov ah, 0x0E
+        int 0x10
+        jmp print
+        done: ret
+    
+    disk_error:
+        mov si, msg_error
+        call print
+        hlt
+        jmp disk_error
+    
+    msg_loading: db "Loading ZTK OS...", 0x0D, 0x0A, 0
+    msg_ok: db "OK", 0x0D, 0x0A, 0
+    msg_error: db "Disk error!", 0
+    
+    times 510 - ($ - $$) db 0
+    dw 0xAA55
+=========

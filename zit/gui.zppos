@@ -1,0 +1,72 @@
+./ZPP@
+./Zui+@
+./mal@
+
+:data: gui_config =========
+    resolution: "1024x768",
+    depth: 32,
+    double_buffer: true,
+    theme: "dark"
+=========
+
+let framebuffer: ptr<u32>
+let width: int = 1024
+let height: int = 768
+
+fun& init_pc(res_w: int, res_h: int) =========
+    osprint''Initializing Zui+ GUI: {res_w}x{res_h}''
+    
+    width = res_w
+    height = res_h
+    
+    // Get framebuffer from VESA
+    framebuffer = ./mal@.vesa.get_framebuffer()
+    
+    if framebuffer == null =========
+        osprint''  Falling back to VGA text mode''
+        framebuffer = 0xB8000 as ptr<u32>
+        width = 80
+        height = 25
+    ========= else =========
+        osprint''  Framebuffer at {framebuffer:#x}''
+        clear_screen(0x1E1E1E)  // Dark gray
+        draw_desktop()
+    =========
+    
+    osprint''[OK] GUI ready''
+=========
+
+fun& clear_screen(color: u32) =========
+    for y = 0 y < height y++ =========
+        for x = 0 x < width x++ =========
+            framebuffer[y * width + x] = color
+        =========
+    =========
+=========
+
+fun& draw_pixel(x: int, y: int, color: u32) =========
+    if x >= 0 and x < width and y >= 0 and y < height =========
+        framebuffer[y * width + x] = color
+    =========
+=========
+
+fun& draw_rect(x: int, y: int, w: int, h: int, color: u32) =========
+    for dy = 0 dy < h dy++ =========
+        for dx = 0 dx < w dx++ =========
+            draw_pixel(x + dx, y + dy, color)
+        =========
+    =========
+=========
+
+fun& draw_desktop() =========
+    // Taskbar at bottom
+    draw_rect(0, height - 40, width, 40, 0x2D2D2D)
+    
+    // Draw clock area
+    draw_rect(width - 100, height - 40, 100, 40, 0x3C3C3C)
+    
+    // Draw ZTK logo
+    draw_rect(10, height - 35, 30, 30, 0x007ACC)
+    
+    osprint''  Desktop drawn''
+=========

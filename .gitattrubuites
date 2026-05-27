@@ -1,0 +1,2 @@
+# Tell GitHub to correctly identify .p files
+*.p linguist-language=ZPP

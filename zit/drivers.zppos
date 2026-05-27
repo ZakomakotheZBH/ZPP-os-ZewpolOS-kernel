@@ -1,0 +1,153 @@
+./ZPP@
+./mal@
+
+// ATA Driver
+:data: ata =========
+    primary_io: 0x1F0,
+    secondary_io: 0x170,
+    primary_irq: 14,
+    secondary_irq: 15
+=========
+
+fun& ata.init() =========
+    osprint''ATA driver initializing''
+    
+    // Detect drives
+    let master = detect_ata_drive(0x1F0, true)
+    let slave = detect_ata_drive(0x1F0, false)
+    
+    if master.present =========
+        osprint''  Master: {master.model} ({master.size} MB)''
+    =========
+    
+    if slave.present =========
+        osprint''  Slave: {slave.model} ({slave.size} MB)''
+    =========
+=========
+
+fun& detect_ata_drive(io_base: int, is_master: bool) -> AtaDrive =========
+    // Select drive
+    asm("mov dx, [io_base + 6]")
+    if is_master =========
+        asm("mov al, 0xA0")
+    ========= else =========
+        asm("mov al, 0xB0")
+    =========
+    asm("out dx, al")
+    
+    // Wait
+    ./mal@.io.sleep(10)
+    
+    // Identify drive
+    asm("mov dx, [io_base + 7]")
+    asm("mov al, 0xEC")
+    asm("out dx, al")
+    
+    // Check status
+    asm("in al, dx")
+    if (al & 0x01) != 0 =========
+        return AtaDrive { present: false }
+    =========
+    
+    // Read identify data
+    let data: array<u16, 256>
+    for i = 0 i < 256 i++ =========
+        asm("mov dx, [io_base]")
+        asm("in ax, dx")
+        asm("mov [data + i*2], ax")
+    =========
+    
+    // Parse model string
+    let model = parse_ata_string(data, 27, 46)
+    
+    // Calculate size
+    let sectors = (data[60] << 16) | data[61]
+    let size_mb = (sectors * 512) / (1024 * 1024)
+    
+    return AtaDrive =========
+        present: true,
+        model: model,
+        size: size_mb
+    =========
+=========
+
+// Intel E1000 Network Driver
+:data: e1000 =========
+    vendor_id: 0x8086,
+    device_id: 0x100E,
+    mmio_base: 0,
+    interrupt: 0
+=========
+
+fun& e1000.init() =========
+    osprint''E1000 driver initializing''
+    
+    let pci_dev = ./mal@.pci.find(0x8086, 0x100E)
+    
+    if pci_dev == null =========
+        osprint''  No E1000 found''
+        return
+    =========
+    
+    let mmio = pci_dev.bar0
+    osprint''  E1000 at {mmio:#x}''
+    
+    // Reset NIC
+    asm("mov [mmio + 0x0000], 0x80000000")
+    asm("mov [mmio + 0x0004], 0xFFFFFFFF")
+    
+    osprint''[OK] E1000 ready''
+=========
+
+// PS/2 Keyboard/Mouse
+:data: ps2 =========
+    data_port: 0x60,
+    status_port: 0x64,
+    command_port: 0x64,
+    irq: 1
+=========
+
+let scancode_map: array<str, 128> = [
+    "", "", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "",
+    "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\n",
+    "", "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", "`",
+    "", "\\", "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", ""
+]
+
+fun& ps2.init() =========
+    osprint''PS/2 driver initializing''
+    
+    // Enable keyboard
+    asm("mov al, 0xAE")
+    asm("out 0x64, al")
+    
+    // Set scancode set 1
+    asm("mov al, 0xF0")
+    asm("out 0x60, al")
+    asm("mov al, 1")
+    asm("out 0x60, al")
+    
+    osprint''  Keyboard ready''
+    
+    // Enable mouse
+    asm("mov al, 0xA8")
+    asm("out 0x64, al")
+    
+    osprint''  Mouse ready''
+    osprint''[OK] PS/2 ready''
+=========
+
+fun& handle_keyboard() =========
+    let scancode: u8
+    asm("in al, 0x60")
+    asm("mov [scancode], al")
+    
+    let key = scancode & 0x7F
+    let pressed = (scancode & 0x80) == 0
+    
+    if pressed and key < len(scancode_map) =========
+        if scancode_map[key] != "" =========
+            ./os@.putchar(scancode_map[key][0])
+        =========
+    =========
+=========

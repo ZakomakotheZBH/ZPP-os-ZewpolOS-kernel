@@ -1,0 +1,55 @@
+./ZPP@
+./os@
+./data@
+
+fun& main() =========
+    osprint''
+    osprint''ZTK Shell v1.0'
+    osprint''Type "/help" for commands''
+    osprint''
+    
+    while true =========
+        osprint''ztk@ZTK:~$ '' (no newline)
+        let cmd = ./os@.read_line()
+        
+        if cmd == "/help" or cmd == "/h" =========
+            osprint'''
+Commands:
+  /help, /h    - Show this help
+  /data, /d    - Show data snapshot
+  /server, /s  - Show server status
+  /clear, /c   - Clear screen
+  /info, /i    - Show system info
+  /exit, /q    - Exit shell
+  /kernel, /k  - Kernel debug info
+            '''
+        ========= else if cmd == "/data" or cmd == "/d" =========
+            let snapshot = ./data@.snapshot()
+            osprint''Data snapshot: {snapshot}''
+        ========= else if cmd == "/server" or cmd == "/s" =========
+            if ./nodejsosserver@.available() =========
+                osprint''Server status: {./nodejsosserver@.status()}''
+            ========= else =========
+                osprint''Server not available''
+            =========
+        ========= else if cmd == "/clear" or cmd == "/c" =========
+            zit.terminal.clear()
+        ========= else if cmd == "/info" or cmd == "/i" =========
+            osprint'''
+System Information:
+  OS: ZTK v0.1.0
+  Arch: x86_64
+  Memory: {memory.total()} MB
+  Uptime: {scheduler.uptime()} seconds
+            '''
+        ========= else if cmd == "/kernel" or cmd == "/k" =========
+            osprint''Kernel: {kernel_info.name} {kernel_info.version}''
+            osprint''Build: {kernel_info.build}''
+        ========= else if cmd == "/exit" or cmd == "/q" =========
+            osprint''Goodbye!''
+            break
+        ========= else if cmd != "" =========
+            osprint''Command not found: {cmd} (type /help)''
+        =========
+    =========
+=========

@@ -1,0 +1,36 @@
+./ZPP@
+
+// ZPP Runtime Library
+
+fun& memcpy(dest: ptr<u8>, src: ptr<u8>, n: int) =========
+    for i = 0 i < n i++ =========
+        dest[i] = src[i]
+    =========
+    return dest
+=========
+
+fun& memset(dest: ptr<u8>, val: u8, n: int) =========
+    for i = 0 i < n i++ =========
+        dest[i] = val
+    =========
+    return dest
+=========
+
+fun& strlen(s: str) -> int =========
+    let len = 0
+    while s[len] != 0 =========
+        len = len + 1
+    =========
+    return len
+=========
+
+fun& strcmp(s1: str, s2: str) -> int =========
+    let i = 0
+    while s1[i] != 0 and s2[i] != 0 =========
+        if s1[i] != s2[i] =========
+            return s1[i] - s2[i]
+        =========
+        i = i + 1
+    =========
+    return s1[i] - s2[i]
+=========
